@@ -9,10 +9,7 @@ import android.widget.TextView;
 import com.avos.avoscloud.im.v2.AVIMMessage;
 import com.avoscloud.chat.R;
 import com.avoscloud.chat.model.LCIMTransferMessage;
-import com.avoscloud.chat.model.LeanchatUser;
-import com.yunzhanghu.redpacketsdk.bean.RedPacketInfo;
-import com.yunzhanghu.redpacketsdk.constant.RPConstant;
-import com.yunzhanghu.redpacketui.utils.RPRedPacketUtil;
+import com.avoscloud.chat.redpacket.RedPacketUtils;
 
 import cn.leancloud.chatkit.viewholder.LCIMChatItemHolder;
 
@@ -46,7 +43,7 @@ public class ChatItemTransferHolder extends LCIMChatItemHolder {
       @Override
       public void onClick(View v) {
         if (null != transferMessage) {
-          openTransfer(getContext(), transferMessage);
+          RedPacketUtils.getInstance().openTransfer(getContext(), transferMessage);
         }
       }
     });
@@ -62,37 +59,4 @@ public class ChatItemTransferHolder extends LCIMChatItemHolder {
     }
   }
 
-  /**
-   * 打开转账红包方法
-   */
-  private void openTransfer(final Context context, final LCIMTransferMessage message) {
-    RPRedPacketUtil.getInstance().openTransferPacket(context, wrapperTransferInfo(message));
-  }
-
-  /**
-   * 封装打开转账红包所需参数
-   *
-   * @param message EMMessage
-   * @return RedPacketInfo
-   */
-  private RedPacketInfo wrapperTransferInfo(LCIMTransferMessage message) {
-    String transferAmount = message.getTransferAmount();
-    String time = message.getTransferTime();
-    RedPacketInfo redPacketInfo = new RedPacketInfo();
-    redPacketInfo.messageDirect = getMessageDirect(message);
-    redPacketInfo.redPacketAmount = transferAmount;
-    redPacketInfo.transferTime = time;
-    return redPacketInfo;
-  }
-
-  private String getMessageDirect(LCIMTransferMessage message) {
-    String selfId = LeanchatUser.getCurrentUserId();
-    String messageDirect; /*判断发送还是接收*/
-    if (message.getFrom() != null && message.getFrom().equals(selfId)) {
-      messageDirect = RPConstant.MESSAGE_DIRECT_SEND;
-    } else {
-      messageDirect = RPConstant.MESSAGE_DIRECT_RECEIVE;
-    }
-    return messageDirect;
-  }
 }

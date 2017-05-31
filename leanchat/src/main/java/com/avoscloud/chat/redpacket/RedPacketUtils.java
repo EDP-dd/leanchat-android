@@ -1,8 +1,10 @@
 package com.avoscloud.chat.redpacket;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.RequestQueue;
@@ -123,6 +125,109 @@ public class RedPacketUtils {
     transferMessage.setTransferMessage(true);
     transferMessage.setTransferToUserId(redPacketInfo.toUserId);
     return transferMessage;
+  }
+
+  /**
+   * Method name:openRedPacket
+   * Describe: 打开红包
+   * Create person：侯洪旭
+   * Create time：16/7/29 下午3:27
+   * Remarks：
+   */
+  public void openRedPacket(final Context context, final LCIMRedPacketMessage message) {
+    final ProgressDialog progressDialog = new ProgressDialog(context);
+    progressDialog.setCanceledOnTouchOutside(false);
+
+    int chatType;
+    if (!TextUtils.isEmpty(message.getRedPacketType())) {
+      chatType = RPConstant.CHATTYPE_GROUP;
+    } else {
+      chatType = RPConstant.CHATTYPE_SINGLE;
+    }
+
+    RPRedPacketUtil.getInstance().openRedPacket(wrapperRedPacketInfo(chatType, message),
+            (FragmentActivity) context,
+            new RPRedPacketUtil.RPOpenPacketCallback() {
+              @Override
+              public void onSuccess(String senderId, String senderNickname, String myAmount) {
+              }
+
+              @Override
+              public void showLoading() {
+                progressDialog.show();
+              }
+
+              @Override
+              public void hideLoading() {
+                progressDialog.dismiss();
+              }
+
+              @Override
+              public void onError(String code, String message) { /*错误处理*/
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+              }
+            });
+  }
+
+  /**
+   * 封装拆红包所需参数
+   *
+   * @param chatType 聊天类型
+   * @param message  EMMessage
+   * @return RedPacketInfo
+   */
+  private RedPacketInfo wrapperRedPacketInfo(int chatType, LCIMRedPacketMessage message) {
+    String redPacketId = message.getRedPacketId();
+    RedPacketInfo redPacketInfo = new RedPacketInfo();
+    redPacketInfo.redPacketId = redPacketId;
+    redPacketInfo.messageDirect = getMessageDirect(message);
+    redPacketInfo.chatType = chatType;
+    return redPacketInfo;
+  }
+
+  private String getMessageDirect(LCIMRedPacketMessage message) {
+    String selfId = LeanchatUser.getCurrentUserId();
+    String messageDirect; /*判断发送还是接收*/
+    if (message.getFrom() != null && message.getFrom().equals(selfId)) {
+      messageDirect = RPConstant.MESSAGE_DIRECT_SEND;
+    } else {
+      messageDirect = RPConstant.MESSAGE_DIRECT_RECEIVE;
+    }
+    return messageDirect;
+  }
+
+  /**
+   * 打开转账红包方法
+   */
+  public void openTransfer(final Context context, final LCIMTransferMessage message) {
+    RPRedPacketUtil.getInstance().openTransferPacket(context, wrapperTransferInfo(message));
+  }
+
+  /**
+   * 封装打开转账红包所需参数
+   *
+   * @param message EMMessage
+   * @return RedPacketInfo
+   */
+  private RedPacketInfo wrapperTransferInfo(LCIMTransferMessage message) {
+    String transferAmount = message.getTransferAmount();
+    String time = message.getTransferTime();
+    RedPacketInfo redPacketInfo = new RedPacketInfo();
+    redPacketInfo.messageDirect = getMessageDirect(message);
+    redPacketInfo.redPacketAmount = transferAmount;
+    redPacketInfo.transferTime = time;
+    return redPacketInfo;
+  }
+
+  private String getMessageDirect(LCIMTransferMessage message) {
+    String selfId = LeanchatUser.getCurrentUserId();
+    String messageDirect; /*判断发送还是接收*/
+    if (message.getFrom() != null && message.getFrom().equals(selfId)) {
+      messageDirect = RPConstant.MESSAGE_DIRECT_SEND;
+    } else {
+      messageDirect = RPConstant.MESSAGE_DIRECT_RECEIVE;
+    }
+    return messageDirect;
   }
 
   /**
