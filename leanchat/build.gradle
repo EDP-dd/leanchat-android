@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "23"
+    buildToolsVersion '25.0.0'
 
     defaultConfig {
         applicationId "com.avoscloud.chat"
@@ -39,8 +39,8 @@ dependencies {
     compile files('libs/glide-3.6.1.jar')
     compile files('libs/volley-1.0.19.jar')
 
-    compile ('cn.leancloud.android:chatkit:1.0.+')
-    compile project(':redpacketlibrary-aar')
+    compile('cn.leancloud.android:chatkit:1.0.+')
+    compile('com.yunzhanghu.redpacket:redpacket-wallet:3.4.6')
 
     compile 'org.ocpsoft.prettytime:prettytime:3.2.7.Final'
     compile 'cn.leancloud.android:avoscloud-statistics:v3.4.5@aar'

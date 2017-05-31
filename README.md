@@ -4,12 +4,6 @@
 
 LeanChat 是 [LeanCloud](http://leancloud.cn) [实时通信](https://leancloud.cn/docs/realtime.html) 组件的 Demo，通过该应用你可以学习和了解 LeanCloud 实时通信功能。
 
-应用体验下载地址：[http://fir.im/leanchat](http://fir.im/leanchat)
-
-## 效果
-
-![leanchat-android1](https://cloud.githubusercontent.com/assets/5022872/7362725/665a7f14-eda0-11e4-8fc5-e7ea5dea0618.gif)
-
 ## 下载
 请直接点击 Github 上的`Download Zip`，如图所示，这样只下载最新版本。如果是 `git clone`，则可能非常慢，因为含杂很大的提交历史。某次测试两者是1.5M:40M。
 

@@ -9,14 +9,22 @@ import com.avos.avoscloud.AVObject;
 import com.avos.avoscloud.im.v2.AVIMMessageManager;
 import com.avoscloud.chat.friends.AddRequest;
 import com.avoscloud.chat.model.LCIMRedPacketMessage;
-import com.avoscloud.chat.model.LCIMRedPcketAckMessage;
+import com.avoscloud.chat.model.LCIMRedPacketAckMessage;
+import com.avoscloud.chat.model.LCIMTransferMessage;
 import com.avoscloud.chat.model.LeanchatUser;
 import com.avoscloud.chat.model.UpdateInfo;
+import com.avoscloud.chat.redpacket.GetSignInfoCallback;
+import com.avoscloud.chat.redpacket.RedPacketUtils;
 import com.avoscloud.chat.service.PushManager;
 import com.avoscloud.chat.util.LeanchatUserProvider;
 import com.avoscloud.chat.util.Utils;
 import com.baidu.mapapi.SDKInitializer;
+import com.yunzhanghu.redpacketsdk.RPInitRedPacketCallback;
+import com.yunzhanghu.redpacketsdk.RPValueCallback;
 import com.yunzhanghu.redpacketsdk.RedPacket;
+import com.yunzhanghu.redpacketsdk.bean.RedPacketInfo;
+import com.yunzhanghu.redpacketsdk.bean.TokenData;
+import com.yunzhanghu.redpacketsdk.constant.RPConstant;
 
 import cn.leancloud.chatkit.LCChatKit;
 
@@ -45,12 +53,37 @@ public class App extends Application {
     AVOSCloud.setLastModifyEnabled(true);
 
     AVIMMessageManager.registerAVIMMessageType(LCIMRedPacketMessage.class);
-    AVIMMessageManager.registerAVIMMessageType(LCIMRedPcketAckMessage.class);
+    AVIMMessageManager.registerAVIMMessageType(LCIMRedPacketAckMessage.class);
+    AVIMMessageManager.registerAVIMMessageType(LCIMTransferMessage.class);
     LCChatKit.getInstance().setProfileProvider(new LeanchatUserProvider());
     LCChatKit.getInstance().init(this, appId, appKey);
 
     // 初始化红包操作
-    RedPacket.getInstance().initContext(ctx);
+    RedPacket.getInstance().initRedPacket(ctx, RPConstant.AUTH_METHOD_SIGN, new RPInitRedPacketCallback() {
+      @Override
+      public void initTokenData(final RPValueCallback<TokenData> rpValueCallback) {
+        RedPacketUtils.getInstance().getRedPacketSign(ctx, new GetSignInfoCallback() {
+          @Override
+          public void signInfoSuccess(TokenData tokenData) {
+            rpValueCallback.onSuccess(tokenData);
+          }
+
+          @Override
+          public void signInfoError(String errorMsg) {
+          }
+        });
+      }
+
+      @Override
+      public RedPacketInfo initCurrentUserSync() {
+        //这里需要同步设置当前用户id、昵称和头像url
+        RedPacketInfo redPacketInfo = new RedPacketInfo();
+        redPacketInfo.fromUserId = LeanchatUser.getCurrentUserId();
+        redPacketInfo.fromAvatarUrl = LeanchatUser.getCurrentUser().getAvatarUrl();
+        redPacketInfo.fromNickName = LeanchatUser.getCurrentUser().getUsername();
+        return redPacketInfo;
+      }
+    });
     //控制红包SDK中Log输出
     RedPacket.getInstance().setDebugMode(false);
 

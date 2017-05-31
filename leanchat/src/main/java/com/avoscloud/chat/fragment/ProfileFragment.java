@@ -20,12 +20,12 @@ import com.avoscloud.chat.R;
 import com.avoscloud.chat.activity.EntryLoginActivity;
 import com.avoscloud.chat.activity.ProfileNotifySettingActivity;
 import com.avoscloud.chat.model.LeanchatUser;
-import com.avoscloud.chat.redpacket.RedPacketUtils;
 import com.avoscloud.chat.service.PushManager;
 import com.avoscloud.chat.service.UpdateService;
 import com.avoscloud.chat.util.PathUtils;
 import com.avoscloud.chat.util.Utils;
 import com.squareup.picasso.Picasso;
+import com.yunzhanghu.redpacketui.utils.RPRedPacketUtil;
 
 import java.io.File;
 
@@ -87,7 +87,7 @@ public class ProfileFragment extends BaseFragment {
 
   @OnClick(R.id.profile_redpacket_view)
   public void onRPClick() {
-    RedPacketUtils.getInstance().toChangeActivity(getActivity(),LeanchatUser.getCurrentUser().getUsername(),LeanchatUser.getCurrentUser().getAvatarUrl());
+    RPRedPacketUtil.getInstance().startChangeActivity(getActivity());
   }
 
   @OnClick(R.id.profile_logout_btn)

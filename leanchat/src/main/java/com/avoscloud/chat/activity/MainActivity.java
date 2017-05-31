@@ -57,7 +57,6 @@ public class MainActivity extends AVBaseActivity {
   ProfileFragment profileFragment;
   Button[] tabs;
   View recentTips, contactTips;
-  String mockUrl = "http://rpv2.yunzhanghu.com/api/sign?duid=" + LeanchatUser.getCurrentUserId();
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +64,6 @@ public class MainActivity extends AVBaseActivity {
     setContentView(R.layout.main_activity);
     findView();
     init();
-    RedPacketUtils.getInstance().setRefreshSign(MainActivity.this,mockUrl);
 
     conversationBtn.performClick();
     initBaiduLocClient();

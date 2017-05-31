@@ -114,6 +114,9 @@
     <string name="money_msg_take_someone_money">你领取了%1$s的红包</string>
     <string name="money_msg_someone_take_money">%1$s领取了你的红包</string>
     <string name="money_msg_someone_take_money_same">%1$s领取了%2$s的红包</string>
-    <string name="leancloud_luckymoney">云账户红包</string>
+    <string name="leancloud_luckymoney">LeanCloud红包</string>
     <string name="exclusive_red_envelope">专属红包</string>
+    <string name="chat_bottom_transfer">转账</string>
+    <string name="transfer_msg_sent">对方已收到转账</string>
+    <string name="transfer_msg_received">已收到对方转账</string>
 </resources>

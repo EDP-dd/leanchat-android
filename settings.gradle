@@ -1,1 +1,1 @@
-include ':leanchat', ':redpacketlibrary-aar'
+include ':leanchat'

@@ -1,10 +1,10 @@
 package com.avoscloud.chat.redpacket;
 
+import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.Intent;
-import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
-import android.util.Log;
+import android.widget.Toast;
 
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.RequestQueue;
@@ -12,38 +12,39 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.avos.avoscloud.im.v2.AVIMConversation;
+import com.avos.avoscloud.im.v2.AVIMException;
+import com.avos.avoscloud.im.v2.callback.AVIMConversationMemberCountCallback;
+import com.avoscloud.chat.R;
+import com.avoscloud.chat.event.RedPacketAckEvent;
+import com.avoscloud.chat.model.LCIMRedPacketAckMessage;
+import com.avoscloud.chat.model.LCIMRedPacketMessage;
+import com.avoscloud.chat.model.LCIMTransferMessage;
 import com.avoscloud.chat.model.LeanchatUser;
 import com.avoscloud.chat.util.UserCacheUtils;
-import com.yunzhanghu.redpacketsdk.RPRefreshSignListener;
+import com.yunzhanghu.redpacketsdk.RPGroupMemberListener;
+import com.yunzhanghu.redpacketsdk.RPSendPacketCallback;
 import com.yunzhanghu.redpacketsdk.RPValueCallback;
 import com.yunzhanghu.redpacketsdk.RedPacket;
 import com.yunzhanghu.redpacketsdk.bean.RPUserBean;
 import com.yunzhanghu.redpacketsdk.bean.RedPacketInfo;
 import com.yunzhanghu.redpacketsdk.bean.TokenData;
 import com.yunzhanghu.redpacketsdk.constant.RPConstant;
-import com.yunzhanghu.redpacketui.ui.activity.RPChangeActivity;
-import com.yunzhanghu.redpacketui.ui.activity.RPRedPacketActivity;
+import com.yunzhanghu.redpacketui.utils.RPRedPacketUtil;
 
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by ustc on 2016/5/31.
- */
+import cn.leancloud.chatkit.LCChatKit;
+import de.greenrobot.event.EventBus;
+
 public class RedPacketUtils {
 
   private static RedPacketUtils mRedPacketUtil;
 
-  private GetGroupMemberCallback mGetGroupMemberCallback;//获取群组成员的回调,可以根据自己的需要选择需不需要
-  private GetUserInfoCallback mGetUserInfoCallback;//获取个人信息的回调,打开专属红包时需要,可以根据自己需要进行选择
-  private GetSignInfoCallback mGetSignInfoCallback;//获取sign的回调
-  private RequestQueue mQueue;
-  private TokenData mTokenData;//打开红包时需要转登录时获取的数据
-
   private RedPacketUtils() {
-
   }
 
   public static RedPacketUtils getInstance() {
@@ -58,75 +59,175 @@ public class RedPacketUtils {
     return mRedPacketUtil;
   }
 
-  /**
-   * 打开发送红包页面使用
-   * @param fromNickname
-   * @param fromAvatarUrl
-   * @param toUserId
-   * @param chatType
-   * @param toGroupId
-   * @param groupMemberCount
-   * @return
-   */
-  public static RedPacketInfo initRedPacketInfo(String fromNickname, String fromAvatarUrl, String toUserId, int chatType, String toGroupId, int groupMemberCount) {
-    RedPacketInfo redPacketInfo = new RedPacketInfo();
-    redPacketInfo.fromAvatarUrl = fromAvatarUrl;//发送人的头像
-    redPacketInfo.fromNickName = fromNickname;//发送人的名字
-    redPacketInfo.chatType = chatType;//判断是否是单聊
-    if (chatType==1){
-      redPacketInfo.toUserId = toUserId;
-    }else if (chatType==2){
-      redPacketInfo.toGroupId = toGroupId;//群id
-      redPacketInfo.groupMemberCount = groupMemberCount;//群成员数量
-    }
-    return redPacketInfo;
-  }
+  public void startRedPacket(final FragmentActivity activity, final AVIMConversation imConversation, final int itemType, final String toUserId, final RPSendPacketCallback callback) {
+    final RedPacketInfo redPacketInfo = new RedPacketInfo();
+    if (itemType == RPConstant.RP_ITEM_TYPE_GROUP) {
 
-  /**
-   * 打开普通红包用
-   *
-   * @param fromNickname
-   * @param fromAvatarUrl
-   * @param moneyMsgDirect
-   * @param chatType
-   * @param moneyId
-   * @return
-   */
-  public static RedPacketInfo initRedPacketInfo_received(String fromNickname, String fromAvatarUrl, String moneyMsgDirect, int chatType, String moneyId) {
-    RedPacketInfo redPacketInfo = new RedPacketInfo();
-    redPacketInfo.moneyMsgDirect = moneyMsgDirect;
-    redPacketInfo.chatType = chatType;
-    redPacketInfo.redPacketId = moneyId;
-    redPacketInfo.toAvatarUrl = fromAvatarUrl;
-    redPacketInfo.toNickName = fromNickname;
-    return redPacketInfo;
-  }
+      //发送专属红包用的,获取群组成员
+      RedPacket.getInstance().setRPGroupMemberListener(new RPGroupMemberListener() {
+        @Override
+        public void getGroupMember(String s, final RPValueCallback<List<RPUserBean>> rpValueCallback) {
+          initRpGroupMember(imConversation.getMembers(), new GetGroupMemberCallback() {
+            @Override
+            public void groupInfoSuccess(List<RPUserBean> rpUserList) {
+              rpValueCallback.onSuccess(rpUserList);
+            }
 
-  /**
-   * 发红包时用
-   *
-   * @param fragment
-   * @param toUserId
-   * @param fromNickname
-   * @param fromAvatarUrl
-   * @param chatType
-   * @param tpGroupId
-   * @param membersNum
-   * @param REQUEST_CODE_SEND_MONEY
-   */
-  public static void selectRedPacket(Fragment fragment, String toUserId, String fromNickname, String fromAvatarUrl, int chatType, String tpGroupId, int membersNum, int REQUEST_CODE_SEND_MONEY) {
-    Intent intent = new Intent(fragment.getActivity(), RPRedPacketActivity.class); /*接收者Id或者接收的群Id*/
-    RedPacketInfo redpacketInfo;
-    if (chatType == RPConstant.CHATTYPE_SINGLE) {
-      redpacketInfo = initRedPacketInfo(fromNickname, fromAvatarUrl, toUserId, RPConstant.CHATTYPE_SINGLE,tpGroupId,membersNum);
-    } else if (chatType == RPConstant.CHATTYPE_GROUP) {
-      redpacketInfo = initRedPacketInfo(fromNickname, fromAvatarUrl, toUserId, RPConstant.CHATTYPE_GROUP, tpGroupId, membersNum);
+            @Override
+            public void groupInfoError() {
+
+            }
+          });
+        }
+      });
+      imConversation.getMemberCount(new AVIMConversationMemberCountCallback() {
+        @Override
+        public void done(Integer integer, AVIMException e) {
+          redPacketInfo.toGroupId = imConversation.getConversationId();
+          redPacketInfo.groupMemberCount = integer;
+          RPRedPacketUtil.getInstance().startRedPacket(activity, itemType, redPacketInfo, callback);
+        }
+      });
     } else {
-      return;
+      redPacketInfo.toUserId = toUserId;
+      LeanchatUser leanchatUser = UserCacheUtils.getCachedUser(toUserId);
+      if (leanchatUser != null) {
+        redPacketInfo.toNickName = TextUtils.isEmpty(leanchatUser.getUsername()) ? "none" : leanchatUser.getUsername();
+        redPacketInfo.toAvatarUrl = TextUtils.isEmpty(leanchatUser.getAvatarUrl()) ? "" : leanchatUser.getAvatarUrl();
+      }
+      RPRedPacketUtil.getInstance().startRedPacket(activity, itemType, redPacketInfo, callback);
     }
-    intent.putExtra(RPConstant.EXTRA_RED_PACKET_INFO, redpacketInfo);
-    intent.putExtra(RPConstant.EXTRA_TOKEN_DATA, RedPacketUtils.getInstance().getTokenData());
-    fragment.startActivityForResult(intent, REQUEST_CODE_SEND_MONEY);
+  }
+
+  /**
+   * 发送红包之后设置红包消息的数据
+   */
+  public LCIMRedPacketMessage createRPMessage(Context context, RedPacketInfo redPacketInfo) {
+    String selfName = LeanchatUser.getCurrentUser().getUsername();
+    String selfID = LeanchatUser.getCurrentUserId();
+
+    LCIMRedPacketMessage redPacketMessage = new LCIMRedPacketMessage();
+    redPacketMessage.setGreeting(redPacketInfo.redPacketGreeting);
+    redPacketMessage.setRedPacketId(redPacketInfo.redPacketId);
+    redPacketMessage.setSponsorName(context.getResources().getString(R.string.leancloud_luckymoney));
+    redPacketMessage.setRedPacketType(redPacketInfo.redPacketType);
+    redPacketMessage.setReceiverId(redPacketInfo.toUserId);
+    redPacketMessage.setMoney(true);
+    redPacketMessage.setSenderName(selfName);
+    redPacketMessage.setSenderId(selfID);
+    return redPacketMessage;
+  }
+
+  public LCIMTransferMessage createTRMessage(RedPacketInfo redPacketInfo) {
+    LCIMTransferMessage transferMessage = new LCIMTransferMessage();
+    transferMessage.setTransferAmount(redPacketInfo.redPacketAmount);
+    transferMessage.setTransferTime(redPacketInfo.transferTime);
+    transferMessage.setTransferMessage(true);
+    transferMessage.setTransferToUserId(redPacketInfo.toUserId);
+    return transferMessage;
+  }
+
+  /**
+   * Method name:openRedPacket
+   * Describe: 打开红包
+   * Create person：侯洪旭
+   * Create time：16/7/29 下午3:27
+   * Remarks：
+   */
+  public void openRedPacket(final Context context, final LCIMRedPacketMessage message) {
+    final ProgressDialog progressDialog = new ProgressDialog(context);
+    progressDialog.setCanceledOnTouchOutside(false);
+
+    int chatType;
+    if (!TextUtils.isEmpty(message.getRedPacketType())) {
+      chatType = RPConstant.CHATTYPE_GROUP;
+    } else {
+      chatType = RPConstant.CHATTYPE_SINGLE;
+    }
+
+    RPRedPacketUtil.getInstance().openRedPacket(wrapperRedPacketInfo(chatType, message),
+            (FragmentActivity) context,
+            new RPRedPacketUtil.RPOpenPacketCallback() {
+              @Override
+              public void onSuccess(String senderId, String senderNickname, String myAmount) {
+              }
+
+              @Override
+              public void showLoading() {
+                progressDialog.show();
+              }
+
+              @Override
+              public void hideLoading() {
+                progressDialog.dismiss();
+              }
+
+              @Override
+              public void onError(String code, String message) { /*错误处理*/
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+              }
+            });
+  }
+
+  /**
+   * 封装拆红包所需参数
+   *
+   * @param chatType 聊天类型
+   * @param message  EMMessage
+   * @return RedPacketInfo
+   */
+  private RedPacketInfo wrapperRedPacketInfo(int chatType, LCIMRedPacketMessage message) {
+    String redPacketId = message.getRedPacketId();
+    RedPacketInfo redPacketInfo = new RedPacketInfo();
+    redPacketInfo.redPacketId = redPacketId;
+    redPacketInfo.messageDirect = getMessageDirect(message);
+    redPacketInfo.chatType = chatType;
+    return redPacketInfo;
+  }
+
+  private String getMessageDirect(LCIMRedPacketMessage message) {
+    String selfId = LeanchatUser.getCurrentUserId();
+    String messageDirect; /*判断发送还是接收*/
+    if (message.getFrom() != null && message.getFrom().equals(selfId)) {
+      messageDirect = RPConstant.MESSAGE_DIRECT_SEND;
+    } else {
+      messageDirect = RPConstant.MESSAGE_DIRECT_RECEIVE;
+    }
+    return messageDirect;
+  }
+
+  /**
+   * 打开转账红包方法
+   */
+  public void openTransfer(final Context context, final LCIMTransferMessage message) {
+    RPRedPacketUtil.getInstance().openTransferPacket(context, wrapperTransferInfo(message));
+  }
+
+  /**
+   * 封装打开转账红包所需参数
+   *
+   * @param message EMMessage
+   * @return RedPacketInfo
+   */
+  private RedPacketInfo wrapperTransferInfo(LCIMTransferMessage message) {
+    String transferAmount = message.getTransferAmount();
+    String time = message.getTransferTime();
+    RedPacketInfo redPacketInfo = new RedPacketInfo();
+    redPacketInfo.messageDirect = getMessageDirect(message);
+    redPacketInfo.redPacketAmount = transferAmount;
+    redPacketInfo.transferTime = time;
+    return redPacketInfo;
+  }
+
+  private String getMessageDirect(LCIMTransferMessage message) {
+    String selfId = LeanchatUser.getCurrentUserId();
+    String messageDirect; /*判断发送还是接收*/
+    if (message.getFrom() != null && message.getFrom().equals(selfId)) {
+      messageDirect = RPConstant.MESSAGE_DIRECT_SEND;
+    } else {
+      messageDirect = RPConstant.MESSAGE_DIRECT_RECEIVE;
+    }
+    return messageDirect;
   }
 
   /**
@@ -134,9 +235,8 @@ public class RedPacketUtils {
    * 根据一个群成员的id集合,查出群成员的具体信息,发专属红包时需要传群成员信息
    */
 
-  public void initRpGroupMember(List<String> ids,GetGroupMemberCallback callback) {
-    mGetGroupMemberCallback=callback;
-    final List<RPUserBean> rpUserList = new ArrayList<RPUserBean>();
+  private void initRpGroupMember(List<String> ids, final GetGroupMemberCallback callback) {
+    final List<RPUserBean> rpUserList = new ArrayList<>();
 
     UserCacheUtils.fetchUsers(ids, new UserCacheUtils.CacheUserCallback() {
       RPUserBean rpUserBean;
@@ -159,13 +259,11 @@ public class RedPacketUtils {
             }
           }
         }
-        /**
-         * 查到数据进行回调
-         */
-        if (rpUserList!=null&&rpUserList.size()>0){
-          mGetGroupMemberCallback.groupInfoSuccess(rpUserList);
-        }else {
-          mGetGroupMemberCallback.groupInfoError();
+        //查到数据进行回调
+        if (rpUserList.size() > 0) {
+          callback.groupInfoSuccess(rpUserList);
+        } else {
+          callback.groupInfoError();
         }
       }
     });
@@ -173,70 +271,11 @@ public class RedPacketUtils {
   }
 
   /**
-   * 根据用户id,获取接收专属红包人的用户信息
-   * @param id
-   * @param callback
-   */
-  public void getReceiveInfo(String id,GetUserInfoCallback callback){
-    mGetUserInfoCallback=callback;
-    RPUserBean rpUserBean = new RPUserBean();
-    if (!TextUtils.isEmpty(id)) {
-      rpUserBean.userId = id;
-    }
-    if (UserCacheUtils.getCachedUser(id) != null) {
-      if (!TextUtils.isEmpty(UserCacheUtils.getCachedUser(id).getUsername())) {
-
-        rpUserBean.userNickname = UserCacheUtils.getCachedUser(id).getUsername();
-      }
-      if (!TextUtils.isEmpty(UserCacheUtils.getCachedUser(id).getAvatarUrl())) {
-
-        rpUserBean.userAvatar = UserCacheUtils.getCachedUser(id).getAvatarUrl();
-      } else {
-        rpUserBean.userAvatar = "none";
-      }
-    }
-    if (rpUserBean!=null){
-      mGetUserInfoCallback.userInfoSuccess(rpUserBean);
-    }else {
-      mGetUserInfoCallback.userInfoError();
-    }
-
-  }
-
-  /**
-   * 刷新sign
-   * @param context
-   * @param url
-   */
-  public void setRefreshSign(final Context context, final String url){
-    RedPacket.getInstance().setRefreshSignListener(new RPRefreshSignListener() {
-      @Override
-      public void onRefreshSign(final RPValueCallback<TokenData> rpValueCallback) {
-
-        getRedPacketSign(context, url, new GetSignInfoCallback() {
-          @Override
-          public void signInfoSuccess(TokenData tokenData) {
-            Log.e("msg", "----->红包SDK登录成功");
-            rpValueCallback.onSuccess(tokenData);
-          }
-
-          @Override
-          public void signInfoError(String errorMsg) {
-            Log.e("msg", "----->红包SDK登录失败"+errorMsg);
-          }
-        });
-      }
-    });
-
-  }
-
-  /**
    * 获取sign
-   * @param context
    */
-  public void getRedPacketSign(Context context,String mockUrl,GetSignInfoCallback callback) {
-    mGetSignInfoCallback=callback;
-    mQueue = Volley.newRequestQueue(context);
+  public void getRedPacketSign(Context context, final GetSignInfoCallback callback) {
+    String mockUrl = "http://rpv2.yunzhanghu.com/api/sign?duid=" + LeanchatUser.getCurrentUserId();
+    RequestQueue requestQueue = Volley.newRequestQueue(context);
     StringRequest stringRequest = new StringRequest(mockUrl, new Response.Listener<String>() {
       @Override
       public void onResponse(String s) {
@@ -247,11 +286,13 @@ public class RedPacketUtils {
             final String userId = jsonObj.getString("user_id");
             final String timestamp = jsonObj.getString("timestamp");
             final String sign = jsonObj.getString("sign");
-            /**
-             * 零钱页和领取红包和发红包时都需要
-             */
-            initTokenData(partner, userId, timestamp, sign);
-            mGetSignInfoCallback.signInfoSuccess(getTokenData());
+            //零钱页和领取红包和发红包时都需要
+            TokenData mTokenData = new TokenData();
+            mTokenData.authPartner = partner;
+            mTokenData.appUserId = userId;
+            mTokenData.timestamp = timestamp;
+            mTokenData.authSign = sign;
+            callback.signInfoSuccess(mTokenData);
           }
 
         } catch (Exception e) {
@@ -261,57 +302,39 @@ public class RedPacketUtils {
     }, new Response.ErrorListener() {
       @Override
       public void onErrorResponse(VolleyError volleyError) {
-        mGetSignInfoCallback.signInfoError(volleyError.toString());
+        callback.signInfoError(volleyError.toString());
       }
     });
     stringRequest.setRetryPolicy(new DefaultRetryPolicy(3000, 2, 2));
-    mQueue.add(stringRequest);
+    requestQueue.add(stringRequest);
   }
 
   /**
-   * 发红包、拆红包、进入零钱页都需要
-   *
-   * @param authPartner
-   * @param authUserId
-   * @param authTimestamp
-   * @param authSign
+   * 打开红包之后发送回执消息
    */
-  public void initTokenData(String authPartner, String authUserId, String authTimestamp, String authSign) {
-    mTokenData = new TokenData();
-    mTokenData.authPartner = authPartner;
-    mTokenData.appUserId = authUserId;
-    mTokenData.authTimestamp = authTimestamp;
-    mTokenData.authSign = authSign;
+  public void sendRedPacketAckMsg(String senderId, String senderNickname, String selfId, String selfName, LCIMRedPacketMessage message) {
+    LCIMRedPacketAckMessage ackMessage = new LCIMRedPacketAckMessage();
+    ackMessage.setSenderId(senderId);
+    ackMessage.setSenderName(senderNickname);
+    ackMessage.setRecipientId(selfId);
+    ackMessage.setRecipientName(selfName);
+    ackMessage.setRedPacketType(message.getRedPacketType());
+    ackMessage.setGreeting(message.getGreeting());
+    ackMessage.setSponsorName(message.getSponsorName());
+    ackMessage.setMoney(true);
+    EventBus.getDefault().post(new RedPacketAckEvent(ackMessage));
   }
 
-  public TokenData getTokenData() {
-    if (mTokenData==null){
-      mTokenData=new TokenData();
-      mTokenData.authSign="A7890";
-      mTokenData.appUserId=LeanchatUser.getCurrentUserId();
-    }else {
-      if (!LeanchatUser.getCurrentUserId().equals(mTokenData.appUserId)){//切换账号的时候
-        mTokenData=new TokenData();
-        mTokenData.authSign="A7891";
-        mTokenData.appUserId=LeanchatUser.getCurrentUserId();
-      }
+  /**
+   * 接收回执消息
+   */
+  public int receiveRedPacketAckMsg(LCIMRedPacketAckMessage typedMessage, int ITEM_TEXT_RED_PACKET_NOTIFY, int ITEM_TEXT_RED_PACKET_NOTIFY_MEMBER) {
+    String selfId = LCChatKit.getInstance().getCurrentUserId();
+    if (!TextUtils.isEmpty(typedMessage.getSenderId()) && !TextUtils.isEmpty(typedMessage.getRecipientId())) {
+      return typedMessage.getSenderId().equals(selfId) || typedMessage.getRecipientId().equals(selfId)
+              ? ITEM_TEXT_RED_PACKET_NOTIFY : ITEM_TEXT_RED_PACKET_NOTIFY_MEMBER;
+    } else {
+      return ITEM_TEXT_RED_PACKET_NOTIFY_MEMBER;
     }
-    return mTokenData;
   }
-
-  /**
-   * 进入零钱页用
-   *
-   * @param mContext
-   */
-  public void toChangeActivity(Context mContext,String userName,String userAvatar) {
-    Intent intent = new Intent(mContext, RPChangeActivity.class);
-    RedPacketInfo redPacketInfo = new RedPacketInfo();
-    redPacketInfo.fromNickName = userName;
-    redPacketInfo.fromAvatarUrl = userAvatar;
-    intent.putExtra(RPConstant.EXTRA_RED_PACKET_INFO, redPacketInfo);
-    intent.putExtra(RPConstant.EXTRA_TOKEN_DATA, getTokenData());
-    mContext.startActivity(intent);
-  }
-
 }

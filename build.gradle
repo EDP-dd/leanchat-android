@@ -7,7 +7,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.2'
+        classpath 'com.android.tools.build:gradle:2.3.2'
         classpath 'org.robolectric:robolectric-gradle-plugin:0.14.+'
     }
 }
@@ -17,6 +17,9 @@ allprojects {
         jcenter()
         maven {
             url "http://mvn.leancloud.cn/nexus/content/repositories/releases"
+        }
+        maven {
+            url "https://raw.githubusercontent.com/YunzhanghuOpen/redpacket-maven-repo/master/release"
         }
     }
 }

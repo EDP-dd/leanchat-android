@@ -1,6 +1,7 @@
 package com.avoscloud.chat.viewholder;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -56,10 +57,11 @@ public class NewFriendItemHolder extends LCIMCommonViewHolder<AddRequest> {
   public void bindData(final AddRequest addRequest) {
     this.addRequest = addRequest;
     LeanchatUser from = addRequest.getFromUser();
-    Picasso.with(getContext()).load(from.getAvatarUrl()).into(avatarView);
-    if (from != null) {
+    if (null != from) {
+      Picasso.with(getContext()).load(from.getAvatarUrl()).into(avatarView);
       nameView.setText(from.getUsername());
     }
+
     int status = addRequest.getStatus();
     if (status == AddRequest.STATUS_WAIT) {
       addBtn.setVisibility(View.VISIBLE);

@@ -7,14 +7,14 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.avoscloud.chat.R;
-import com.avoscloud.chat.model.LCIMRedPcketAckMessage;
+import com.avoscloud.chat.model.LCIMRedPacketAckMessage;
 import com.avoscloud.chat.model.LeanchatUser;
 
 import cn.leancloud.chatkit.viewholder.LCIMChatItemHolder;
 
 public class ChatItemRedPacketAckHolder extends LCIMChatItemHolder {
 
-  protected TextView contentView;
+  private TextView contentView;
 
   public ChatItemRedPacketAckHolder(Context context, ViewGroup root, boolean isLeft) {
     super(context, root, isLeft);
@@ -32,8 +32,8 @@ public class ChatItemRedPacketAckHolder extends LCIMChatItemHolder {
   public void bindData(Object o) {
     super.bindData(o);
     nameView.setText("");
-    if (o instanceof LCIMRedPcketAckMessage) {
-      LCIMRedPcketAckMessage ackMessage = (LCIMRedPcketAckMessage) o;
+    if (o instanceof LCIMRedPacketAckMessage) {
+      LCIMRedPacketAckMessage ackMessage = (LCIMRedPacketAckMessage) o;
       initRedPacketAckChatItem(ackMessage.getSenderName(), ackMessage.getRecipientName(),
         LeanchatUser.getCurrentUserId().equals(ackMessage.getSenderId()),
         LeanchatUser.getCurrentUserId().equals(ackMessage.getFrom()),
