@@ -196,14 +196,18 @@ public class RefreshableRecyclerView extends RecyclerView {
     HeaderListAdapter adapter = getAdapter();
     if (null != adapter) {
       if (isRefresh) {
-        adapter.setDataList(Arrays.asList(datas));
-        adapter.notifyDataSetChanged();
+        if (null != datas) {
+          adapter.setDataList(Arrays.asList(datas));
+          adapter.notifyDataSetChanged();
+        }
         if (null != swipeRefreshLayout) {
           swipeRefreshLayout.setRefreshing(false);
         }
       } else {
-        adapter.addDataList(Arrays.asList(datas));
-        adapter.notifyDataSetChanged();
+        if (null != datas) {
+          adapter.addDataList(Arrays.asList(datas));
+          adapter.notifyDataSetChanged();
+        }
       }
     }
   }

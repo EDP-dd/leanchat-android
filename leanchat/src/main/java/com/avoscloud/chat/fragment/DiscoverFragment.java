@@ -8,6 +8,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -113,7 +114,10 @@ public class DiscoverFragment extends BaseFragment {
       @Override
       public void done(List<LeanchatUser> list, AVException e) {
         UserCacheUtils.cacheUsers(list);
-        recyclerView.setLoadComplete(list.toArray(), isRefresh);
+        recyclerView.setLoadComplete(null == list ? null : list.toArray(), isRefresh);
+        if (null != e) {
+          Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
       }
     });
   }

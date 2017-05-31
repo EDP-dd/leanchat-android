@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
+import android.widget.Toast;
 
 import butterknife.Bind;
 import com.avos.avoscloud.AVException;
@@ -71,14 +72,20 @@ public class ContactNewFriendActivity extends AVBaseActivity {
         public void done(List<AddRequest> list, AVException e) {
           AddRequestManager.getInstance().markAddRequestsRead(list);
           final List<AddRequest> filters = new ArrayList<AddRequest>();
-          for (AddRequest addRequest : list) {
-            if (addRequest.getFromUser() != null) {
-              filters.add(addRequest);
+          if (null != list) {
+            for (AddRequest addRequest : list) {
+              if (addRequest.getFromUser() != null) {
+                filters.add(addRequest);
+              }
             }
           }
           PreferenceMap preferenceMap = new PreferenceMap(ContactNewFriendActivity.this, LeanchatUser.getCurrentUserId());
           preferenceMap.setAddRequestN(filters.size());
-          recyclerView.setLoadComplete(list.toArray(), isRefresh);
+          recyclerView.setLoadComplete(null == list ? null : list.toArray(), isRefresh);
+
+          if (null != e) {
+            Toast.makeText(ContactNewFriendActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+          }
         }
       });
     }

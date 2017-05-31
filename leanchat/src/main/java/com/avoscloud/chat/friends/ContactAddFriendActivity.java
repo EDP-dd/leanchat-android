@@ -75,7 +75,10 @@ public class ContactAddFriendActivity extends AVBaseActivity {
       @Override
       public void done(List<LeanchatUser> list, AVException e) {
         UserCacheUtils.cacheUsers(list);
-        recyclerView.setLoadComplete(list.toArray(), false);
+        recyclerView.setLoadComplete(null == list ? null : list.toArray(), false);
+        if (null != e) {
+          showToast(e.getMessage());
+        }
       }
     });
   }
